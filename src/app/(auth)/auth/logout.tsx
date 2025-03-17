@@ -1,20 +1,24 @@
 'use client';
 
-import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useAuth } from "@/components/providers/SupabaseProvider";
 
 export default function Logout() {
   const router = useRouter();
+  const { signOut } = useAuth();
 
   useEffect(() => {
-    signOut({ callbackUrl: '/auth' }).then(() => {
-      // Clear cookies and local storage
-      document.cookie = 'next-auth.session-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    const performLogout = async () => {
+      await signOut();
+      // Clear any remaining client-side data
       localStorage.clear();
+      sessionStorage.clear();
       router.push('/auth');
-    });
-  }, [router]);
+    };
+    
+    performLogout();
+  }, [router, signOut]);
 
   return <div>Logging out...</div>;
 }

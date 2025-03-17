@@ -25,3 +25,38 @@ export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser();
   return user;
 }
+
+import { createClient } from '@/utils/supabase/server';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+
+export async function getServerSession() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+  
+  const { data: { session } } = await supabase.auth.getSession();
+  return session;
+}
+
+export async function getServerUser() {
+  const session = await getServerSession();
+  return session?.user || null;
+}
+
+export async function requireAuth() {
+  const user = await getServerUser();
+  
+  if (!user) {
+    redirect('/auth?message=Please sign in to access this page');
+  }
+  
+  return user;
+}
+
+export async function redirectIfAuthenticated() {
+  const session = await getServerSession();
+  
+  if (session) {
+    redirect('/dashboard');
+  }
+}

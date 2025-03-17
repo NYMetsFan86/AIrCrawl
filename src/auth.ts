@@ -120,3 +120,35 @@ export const authOptions: NextAuthOptions = {
 
 // Use the authOptions defined above, not imported from elsewhere
 export const { handlers, auth, signIn, signOut } = NextAuth(authOptions);
+
+// Supabase authentication methods
+import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
+
+export async function getSession() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+  
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session;
+  } catch (error) {
+    console.error("Error getting session:", error);
+    return null;
+  }
+}
+
+export async function getUser() {
+  const session = await getSession();
+  return session?.user || null;
+}
+
+export async function requireAuth() {
+  const user = await getUser();
+  
+  if (!user) {
+    throw new Error("Authentication required");
+  }
+  
+  return user;
+}

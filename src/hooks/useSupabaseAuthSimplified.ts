@@ -1,185 +1,238 @@
-"use client";
+import { useCallback, useEffect, useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { useRouter } from 'next/navigation';
+import { Session, User } from '@supabase/supabase-js';
 
-import { useState, useEffect } from "react";
-import { createClient } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
-import { Session, User } from "@supabase/supabase-js";
+export type AuthUser = {
+  id: string;
+  email: string | null;
+  name: string | null;
+  role?: string;
+  avatarUrl?: string | null;
+};
 
-export type AuthUser = User;
+export interface SignInCredentials {
+  email: string;
+  password: string;
+}
+
+export interface SignUpCredentials extends SignInCredentials {
+  name: string;
+  metadata: {
+    name: string;
+    [key: string]: any;
+  };
+}
+
+export interface SignInResponse {
+  success: boolean;
+  error?: {
+    message: string;
+  };
+}
 
 export function useSupabaseAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const router = useRouter();
-  
   const supabase = createClient();
 
+  const refreshSession = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      if (session) {
+        setSession(session);
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+          name: session.user.user_metadata?.name || null,
+          role: session.user.user_metadata?.role || 'member',
+          avatarUrl: session.user.user_metadata?.avatar_url || null,
+        });
+      } else {
+        setUser(null);
+        setSession(null);
+      }
+    } catch (err) {
+      console.error('Error refreshing auth session:', err);
+      setError(err instanceof Error ? err : new Error('Failed to refresh session'));
+      setUser(null);
+      setSession(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase]);
+
   useEffect(() => {
-    const getSession = async () => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      refreshSession();
+    });
+
+    refreshSession();
+    return () => subscription.unsubscribe();
+  }, [supabase, refreshSession]);
+
+  const signIn = useCallback(
+    async ({ email, password }: SignInCredentials): Promise<SignInResponse> => {
       try {
         setLoading(true);
-        
-        // Get the current session
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          throw sessionError;
+        setError(null);
+
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          setError(new Error(error.message));
+          return { 
+            success: false, 
+            error: { message: error.message } 
+          };
         }
         
-        if (currentSession) {
-          setSession(currentSession);
-          setUser(currentSession.user);
-          setIsAuthenticated(true);
-        }
+        await refreshSession();
         
-        // Set up the auth state change listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          (event, newSession) => {
-            console.log("Auth state changed:", event);
-            if (newSession) {
-              setSession(newSession);
-              setUser(newSession.user);
-              setIsAuthenticated(true);
-            } else {
-              setSession(null);
-              setUser(null);
-              setIsAuthenticated(false);
-            }
-            // Force refresh current route
-            router.refresh();
-          }
-        );
-        
-        return () => {
-          subscription.unsubscribe();
+        return { success: true };
+      } catch (err) {
+        console.error('Sign in error:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to sign in';
+        setError(err instanceof Error ? err : new Error(errorMessage));
+        return { 
+          success: false, 
+          error: { message: errorMessage } 
         };
-      } catch (error) {
-        console.error("Auth hook error:", error);
-        setError(error instanceof Error ? error : new Error('Authentication error'));
       } finally {
         setLoading(false);
       }
-    };
-    
-    getSession();
-  }, [router, supabase.auth]);
+    },
+    [supabase, refreshSession]
+  );
 
-  const signIn = async ({ email, password }) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (error) throw error;
-      
-      return { success: true };
-    } catch (error) {
-      console.error("Sign-in error:", error);
-      return { success: false, error };
-    }
-  };
+  const signUp = useCallback(
+    async ({ email, password, metadata }: SignUpCredentials): Promise<SignInResponse> => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: metadata,
+            emailRedirectTo: `${window.location.origin}/auth/callback`
+          }
+        });
 
-  const signInWithOAuth = async (provider: "google" | "github") => {
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      
-      if (error) throw error;
-      
-      return { success: true };
-    } catch (error) {
-      console.error("OAuth sign-in error:", error);
-      return { success: false, error };
-    }
-  };
+        if (error) {
+          return {
+            success: false, 
+            error: { message: error.message }
+          };
+        }
 
-  const signUp = async ({ email, password, name, metadata }) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: metadata,
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      
-      if (error) throw error;
-      
-      return { success: true };
-    } catch (error) {
-      console.error("Sign-up error:", error);
-      return { success: false, error };
-    }
-  };
+        return { success: true };
+      } catch (error: any) {
+        console.error('Registration error:', error);
+        return { 
+          success: false, 
+          error: { message: error?.message || 'Registration failed' } 
+        };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [supabase]
+  );
 
-  const signOut = async () => {
+  const signInWithOAuth = useCallback(
+    async (provider: 'google' | 'github') => {
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+
+        if (error) throw error;
+        return { success: true };
+      } catch (error: any) {
+        console.error(`${provider} sign in error:`, error);
+        return { 
+          success: false, 
+          error: { message: error?.message || `Failed to sign in with ${provider}` } 
+        };
+      }
+    },
+    [supabase]
+  );
+
+  const signOut = useCallback(async () => {
     try {
       const { error } = await supabase.auth.signOut();
-      
       if (error) throw error;
       
+      setUser(null);
+      setSession(null);
       return { success: true };
-    } catch (error) {
-      console.error("Sign-out error:", error);
-      return { success: false, error };
+    } catch (error: any) {
+      console.error('Sign out error:', error);
+      return { 
+        success: false, 
+        error: { message: error?.message || 'Failed to sign out' } 
+      };
     }
-  };
+  }, [supabase]);
 
-  const sendPasswordResetEmail = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      });
-      
-      if (error) throw error;
-      
-      return { success: true };
-    } catch (error) {
-      console.error("Password reset email error:", error);
-      return { success: false, error };
-    }
-  };
+  const sendPasswordResetEmail = useCallback(
+    async (email: string) => {
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth/reset-password`,
+        });
 
-  const resetPassword = async (newPassword: string) => {
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-      
-      if (error) throw error;
-      
-      return { success: true };
-    } catch (error) {
-      console.error("Password reset error:", error);
-      return { success: false, error };
-    }
-  };
-
-  const refreshSession = async () => {
-    try {
-      const { data, error } = await supabase.auth.refreshSession();
-      
-      if (error) throw error;
-      
-      if (data.session) {
-        setSession(data.session);
-        setUser(data.session.user);
-        setIsAuthenticated(true);
+        if (error) throw error;
+        return { success: true };
+      } catch (error: any) {
+        console.error('Password reset error:', error);
+        return { 
+          success: false, 
+          error: { message: error?.message || 'Failed to send password reset email' } 
+        };
       }
-    } catch (error) {
-      console.error("Session refresh error:", error);
-      setError(error instanceof Error ? error : new Error('Session refresh error'));
-    }
-  };
+    },
+    [supabase]
+  );
+
+  const resetPassword = useCallback(
+    async (newPassword: string) => {
+      try {
+        const { error } = await supabase.auth.updateUser({
+          password: newPassword,
+        });
+
+        if (error) throw error;
+        return { success: true };
+      } catch (error: any) {
+        console.error('Password update error:', error);
+        return { 
+          success: false, 
+          error: { message: error?.message || 'Failed to update password' } 
+        };
+      }
+    },
+    [supabase]
+  );
 
   return {
     user,
@@ -193,6 +246,6 @@ export function useSupabaseAuth() {
     sendPasswordResetEmail,
     resetPassword,
     refreshSession,
-    isAuthenticated,
+    isAuthenticated: !!session,
   };
 }
