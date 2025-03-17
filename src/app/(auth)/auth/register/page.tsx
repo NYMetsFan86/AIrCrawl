@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [ssoLoading, setSsoLoading] = useState<string | null>(null);
   const { signUp, signInWithOAuth } = useAuth();
@@ -56,10 +57,20 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      toast({
+        title: 'Registration failed',
+        description: "Passwords don't match",
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      const success = await signUp({ name, email, password });
+      const success = await signUp({ email, password, metadata: { name } });
       
       if (success) {
         toast({
@@ -148,6 +159,19 @@ export default function RegisterPage() {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium">Confirm Password</label>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
           

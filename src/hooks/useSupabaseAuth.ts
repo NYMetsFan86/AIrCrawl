@@ -22,6 +22,10 @@ type SignInCredentials = {
 
 type SignUpCredentials = SignInCredentials & {
   name: string;
+  metadata: {
+    name: string;
+    [key: string]: any;
+  };
 };
 
 export function useSupabaseAuth() {
@@ -90,80 +94,130 @@ export function useSupabaseAuth() {
     return () => subscription.unsubscribe();
   }, [supabase, refreshSession]);
 
+  interface SignInResponse {
+    success: boolean;
+    error?: {
+      message: string;
+    };
+  }
+
   // Sign in with email and password
   const signIn = useCallback(
-    async ({ email, password }: SignInCredentials) => {
+    async ({ email, password }: SignInCredentials): Promise<SignInResponse> => {
       try {
         setLoading(true);
         setError(null);
 
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) {
-          throw new Error(error.message);
+          const errorMessage = error.message === 'Invalid login credentials' 
+            ? 'Invalid login credentials. Please check your email and password.'
+            : error.message;
+          
+          setError(new Error(errorMessage));
+          return { 
+            success: false, 
+            error: { message: errorMessage } 
+          };
         }
         
+        // Make sure session is fully established before redirecting
         await refreshSession();
-        return true;
+        
+        // Ensure we have the session before redirecting
+        if (data.session) {
+          console.log("Authentication successful, redirecting to dashboard");
+          
+          // Small timeout to ensure auth state is propagated
+          setTimeout(() => {
+            router.push('/dashboard');
+          }, 500);
+        } else {
+          console.error("Session not established after login");
+          return {
+            success: false,
+            error: { message: "Failed to establish session" }
+          };
+        }
+        
+        return { success: true };
       } catch (err) {
         console.error('Sign in error:', err);
-        setError(err instanceof Error ? err : new Error('Failed to sign in'));
-        return false;
+        const errorMessage = err instanceof Error ? err.message : 'Failed to sign in';
+        setError(err instanceof Error ? err : new Error(errorMessage));
+        return { 
+          success: false, 
+          error: { message: errorMessage } 
+        };
       } finally {
         setLoading(false);
       }
     },
-    [supabase, refreshSession]
+    [supabase, refreshSession, router]
   );
 
   // Sign up with email and password
+  interface SignUpResponse {
+    success: boolean;
+    data?: {
+      user: User | null;
+      session: Session | null;
+    };
+    error?: {
+      message: string;
+    };
+  }
+
   const signUp = useCallback(
-    async ({ email, password, name }: SignUpCredentials) => {
+    async ({ email, password, metadata }: SignUpCredentials): Promise<SignUpResponse> => {
       try {
         setLoading(true);
-        setError(null);
-
-        // Register new user
-        const { error: signUpError, data } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: {
-              name,
-            },
+            data: metadata
           },
         });
 
-        if (signUpError) {
-          throw new Error(signUpError.message);
+        if (error) {
+          throw error;
         }
 
-        // Add user profile data
-        if (data.user) {
+        if (!data.user) {
+          throw new Error('User data not available after signup');
+        }
+
+        // Create user profile record
+        try {
           const { error: profileError } = await supabase
-            .from('users')
+            .from('profiles')
             .insert([
               {
                 id: data.user.id,
-                email: data.user.email,
-                name: name,
-                role: 'member', // Default role
+                email,
+                name: metadata.name,
+                // Add any other profile fields you need
+                created_at: new Date().toISOString(),
               },
             ]);
 
           if (profileError) {
-            console.error('Error creating user profile:', profileError);
+            throw profileError;
           }
+        } catch (profileError) {
+          console.error('Error creating user profile:', profileError);
+          throw new Error(`Error creating user profile: ${JSON.stringify(profileError)}`);
         }
 
-        return true;
-      } catch (err) {
-        console.error('Sign up error:', err);
-        setError(err instanceof Error ? err : new Error('Failed to sign up'));
-        return false;
+        return { success: true, data };
+      } catch (error: any) {
+        console.error('Registration error:', error);
+        return { success: false, error: { message: error?.message || 'Registration failed' } };
       } finally {
         setLoading(false);
       }

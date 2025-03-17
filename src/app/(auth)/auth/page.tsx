@@ -40,11 +40,29 @@ export default function AuthPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!signIn) {
+      toast({ 
+        title: "Error", 
+        description: "Authentication service is not available", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
     setLoading(true);
     try {
-      const success = await signIn({ email, password });
-      if (success) {
-        router.push(callbackUrl);
+      console.log("Attempting sign in with:", email);
+      const result = await signIn({ email, password });
+      console.log("Sign in result:", result);
+      
+      if (result.success) {
+        console.log("Sign in successful, redirecting to:", callbackUrl);
+        // Use a slight delay to allow the session to be properly set
+        setTimeout(() => {
+          router.push(callbackUrl);
+          // Force a refresh of the router
+          router.refresh();
+        }, 500);
       } else {
         toast({ 
           title: "Login Failed", 

@@ -5,17 +5,35 @@ import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { AuthUser } from "@/hooks/useSupabaseAuth";
 import { Session } from "@supabase/supabase-js";
 
+export interface SignInCredentials {
+  email: string;
+  password: string;
+}
+
+export interface SignUpCredentials {
+  email: string;
+  password: string;
+  name: string;
+  metadata: { [key: string]: any; name: string };
+}
+
+export interface SignInResponse {
+  // Define properties based on the actual response structure
+  success: boolean;
+  // Add other properties as needed
+}
+
 export interface AuthContextType {
   user: AuthUser | null;
   session: Session | null;
   loading: boolean;
   error: Error | null;
-  signIn: (credentials: { email: string; password: string }) => Promise<boolean>;
-  signUp: (credentials: { email: string; password: string; name: string }) => Promise<boolean>;
-  signInWithOAuth: (provider: "google" | "github") => Promise<boolean>;
-  signOut: () => Promise<boolean>;
-  sendPasswordResetEmail: (email: string) => Promise<boolean>;
-  resetPassword: (newPassword: string) => Promise<boolean>;
+  signIn: (credentials: SignInCredentials) => Promise<SignInResponse>;
+  signUp: (credentials: SignUpCredentials) => Promise<SignInResponse>;
+  signInWithOAuth: (provider: "google" | "github") => Promise<SignInResponse>;
+  signOut: () => Promise<SignInResponse>;
+  sendPasswordResetEmail: (email: string) => Promise<SignInResponse>;
+  resetPassword: (newPassword: string) => Promise<SignInResponse>;
   refreshSession: () => Promise<void>;
   isAuthenticated: boolean;
 }

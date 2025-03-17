@@ -12,10 +12,9 @@ export function parseBoolean(value: string | boolean): boolean {
 }
 
 export function ensureDirectoryExists(path: string): void {
-  const fs = require('fs');
-  if (!fs.existsSync(path)) {
-    fs.mkdirSync(path, { recursive: true });
-  }
+  // This function cannot use fs directly in client components
+  console.warn('ensureDirectoryExists cannot be used in client components');
+  // The actual implementation should be moved to a server action or API route
 }
 
 export function formatNumber(num: number, options: Intl.NumberFormatOptions = {}): string {
