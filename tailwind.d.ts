@@ -1,0 +1,15 @@
+declare module '@tailwindcss/typography';
+declare module '@tailwindcss/forms';
+declare module 'tailwindcss-animate';
+declare module 'tailwindcss/defaultTheme';
+declare module 'estree';
+declare module 'json-schema';
+declare module 'node';
+declare module 'source-list-map';
+declare module 'uglify-js';
+declare module 'webpack';
+declare module 'webpack-sources';
+declare module 'node_modules';
+declare module 'prisma';
+declare module 'public';
+declare module 'src';

@@ -1,0 +1,303 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     String              @id @default(uuid())
+  name                   String?
+  email                  String              @unique
+  emailVerified          DateTime?
+  image                  String?
+  role                   String              @default("member") @db.VarChar(20)
+  hashedPassword         String?
+  resetPasswordExpires   DateTime?
+  resetPasswordToken     String?
+  accounts               Account[]
+  alerts                 Alert[]
+  crawlJobs              CrawlJob[]
+  metrics                DashboardMetric[]
+  dashboardStats         DashboardStat[]
+  mediaItems             MediaItem[]
+  performanceMetrics     PerformanceMetric[]
+  sessions               Session[]
+  provider               String? // "google", "apple", or null for credentials
+  providerAccountId      String?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  @@index([email])
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expires])
+  @@index([userId])
+}
+
+model DashboardMetric {
+  id       String   @id @default(uuid())
+  userId   String
+  category String?
+  date     DateTime @default(now())
+  name     String
+  value    Float
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([date])
+  @@index([userId])
+}
+
+model PerformanceMetric {
+  id     String   @id @default(uuid())
+  userId String
+  name   String
+  value  Float
+  date   DateTime @default(now())
+  user   User     @relation(fields: [userId], references: [id])
+
+  @@index([date])
+  @@index([userId])
+}
+
+model DashboardStat {
+  id     String   @id @default(uuid())
+  userId String
+  name   String
+  value  Float
+  change Float?
+  note   String?
+  date   DateTime @default(now())
+  user   User     @relation(fields: [userId], references: [id])
+
+  @@index([date])
+  @@index([userId])
+}
+
+model Member {
+  id               String    @id @default(uuid())
+  name             String
+  websiteUrl       String
+  status           String
+  subscriptionDate DateTime
+  cancellationDate DateTime?
+  scans            Scan[]
+
+  @@index([websiteUrl])
+}
+
+model Scan {
+  id            String              @id @default(uuid())
+  memberId      String
+  scheduledDate DateTime
+  status        String
+  results       InfringementReport?
+  member        Member              @relation(fields: [memberId], references: [id])
+
+  @@index([memberId])
+}
+
+model InfringementReport {
+  id              String   @id @default(uuid())
+  scanId          String   @unique
+  urlScanned      String
+  flaggedKeywords String
+  flaggedLogos    String
+  confidenceScore Float
+  screenshot      String?
+  timestamp       DateTime @default(now())
+  scan            Scan     @relation(fields: [scanId], references: [id])
+
+  @@index([urlScanned])
+  @@index([scanId])
+}
+
+model CrawlJob {
+  id             String          @id @default(uuid())
+  name           String
+  url            String
+  schedule       String?
+  isRecurring    Boolean         @default(false)
+  status         String          @default("pending") @db.VarChar(20)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  userId         String
+  useGlobalMedia Boolean         @default(false)
+  alerts         Alert[]
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  crawlRuns      CrawlRun[]
+  analyses       CrawlAnalysis[] @relation("AnalysesRelation")
+  mediaItems     MediaItem[]     @relation("CrawlJobToMediaItem")
+
+  @@index([status])
+  @@index([userId])
+}
+
+model CrawlRun {
+  id            String       @id @default(uuid())
+  status        String       @db.VarChar(20)
+  startedAt     DateTime
+  completedAt   DateTime?
+  errorMessage  String?      @db.Text
+  configuration String?      @db.Text
+  crawlJobId    String
+  crawlJob      CrawlJob     @relation(fields: [crawlJobId], references: [id])
+  alerts        Alert[]      @relation("CrawlRunToAlert")
+  mediaAssets   MediaAsset[]
+  crawlAlerts   CrawlAlert[] @relation("CrawlRunToCrawlAlert")
+  resultsData   String?      @db.Text
+
+  @@index([status])
+  @@index([crawlJobId])
+}
+
+model MediaItem {
+  id        String     @id @default(uuid())
+  name      String
+  type      String
+  global    Boolean    @default(false)
+  url       String
+  userId    String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  crawlJobs CrawlJob[] @relation("CrawlJobToMediaItem")
+
+  @@index([url])
+  @@index([userId])
+}
+
+model Alert {
+  id             String    @id @default(uuid())
+  title          String
+  description    String    @db.Text
+  severity       String
+  type           String
+  status         String
+  date           DateTime  @default(now())
+  url            String?
+  confidence     Float?
+  matchedContent String?   @db.Text
+  userId         String
+  crawlJobId     String?
+  crawlRunId     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  crawlRun       CrawlRun? @relation("CrawlRunToAlert", fields: [crawlRunId], references: [id], onDelete: Cascade)
+  crawlJob       CrawlJob? @relation(fields: [crawlJobId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([crawlJobId])
+  @@index([crawlRunId])
+}
+
+model CrawlAnalysis {
+  id             String   @id @default(uuid())
+  crawlJobId     String
+  analysisResult String   @db.Text
+  processedAt    DateTime
+  crawlJob       CrawlJob @relation("AnalysesRelation", fields: [crawlJobId], references: [id], onDelete: Cascade)
+
+  @@map("crawl_analysis")
+  @@index([crawlJobId])
+}
+
+model CrawlAlert {
+  id        String   @id @default(uuid())
+  crawlRunId String
+  type      String
+  message   String   @db.Text
+  details   String   @db.Text
+  createdAt DateTime @default(now())
+  crawlRun  CrawlRun @relation("CrawlRunToCrawlAlert", fields: [crawlRunId], references: [id])
+
+  @@map("crawl_alerts")
+  @@index([crawlRunId])
+}
+
+model MediaAsset {
+  id         String   @id @default(uuid())
+  url        String
+  localPath  String?
+  mimeType   String?
+  alt        String?
+  filename   String?
+  size       Int?
+  width      Int?
+  height     Int?
+  status     String   @default("pending") @db.VarChar(20)
+  crawlRunId String
+  crawlRun   CrawlRun @relation(fields: [crawlRunId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  type       String
+  sourceUrl  String
+  pageTitle  String
+  metadata   String?  @db.Text
+
+  @@index([url])
+  @@index([status])
+  @@index([crawlRunId])
+}
+
+model LLMCache {
+  id        String   @id @default(uuid())
+  cacheKey  String   @unique
+  prompt    String   @db.Text
+  response  String   @db.Text
+  provider  String
+  model     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime
+
+  @@map("llm_cache")
+  @@index([cacheKey])
+  @@index([provider])
+  @@index([model])
+  @@index([expiresAt])
+}
+
+model LLMSettings {
+  id            String   @id @default(uuid())
+  provider      String   @default("openai")
+  apiKey        String
+  model         String   @default("gpt-4")
+  isDefault     Boolean  @default(false)
+  configuration String?  @db.Text
+  userId        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("llm_settings")
+  @@index([userId])
+}

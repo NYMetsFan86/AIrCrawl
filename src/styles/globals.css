@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base colors */
+    --background: 36 25% 95%;       /* #f5f1ec very light beige */
+    --foreground: 343 6% 24%;       /* #3f383b dark gray */
+    
+    /* Component colors */
+    --card: 0 0% 100%;              /* #ffffff white */
+    --card-foreground: 343 6% 24%;  /* #3f383b dark gray */
+    
+    --popover: 0 0% 100%;           /* #ffffff white */
+    --popover-foreground: 343 6% 24%; /* #3f383b dark gray */
+    
+    /* Theme colors */
+    --primary: 0 89% 28%;           /* #860808 dark red */
+    --primary-foreground: 0 0% 94%; /* #f0f1f0 light gray */
+    
+    --secondary: 33 21% 69%;        /* #c2b19c beige */
+    --secondary-foreground: 0 89% 28%; /* #860808 dark red */
+    
+    --muted: 36 25% 95%;            /* #f5f1ec very light beige */
+    --muted-foreground: 343 6% 24%; /* #3f383b dark gray */
+    
+    --accent: 33 21% 69%;           /* #c2b19c beige */
+    --accent-foreground: 0 89% 28%; /* #860808 dark red */
+    
+    /* Status colors */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    
+    /* Form elements */
+    --border: 0 5% 90%;             /* #e6e6e6 light gray */
+    --input: 36 25% 95%;            /* #f5f1ec very light beige */
+    --ring: 0 89% 28%;              /* #860808 dark red */
+    
+    /* Radius */
+    --radius: 0.5rem;
+  }
+
+  /* Base font settings */
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #3f383b;
+  }
+}
+
+@layer components {
+  /* Button styles */
+  .btn {
+    @apply px-4 py-2 rounded-md;
+  }
+  
+  /* Navigation styles */
+  .sidenav-item {
+    @apply font-semibold;
+  }
+  
+  /* Primary button states */
+  .btn-primary {
+    background-color: #860808; /* main */
+    color: #f0f1f0;
+  }
+  
+  .btn-primary:hover {
+    background-color: #5a0505; /* dark */
+    color: #f0f1f0;
+  }
+  
+  .btn-primary:active {
+    background-color: #5a0505; /* dark */
+  }
+  
+  /* Secondary button states */
+  .btn-secondary {
+    background-color: #c2b19c; /* main */
+    color: #3f383b;
+  }
+  
+  .btn-secondary:hover {
+    background-color: #a89987; /* dark */
+    color: #ffffff;
+  }
+  
+  .btn-secondary:active {
+    background-color: #a89987; /* dark */
+  }
+}
+
+@layer utilities {
+  /* Content visibility utilities */
+  .content-auto {
+    content-visibility: auto;
+  }
+  
+  /* Text colors */
+  .text-primary {
+    color: #3f383b; /* dark gray */
+  }
+  
+  .text-secondary {
+    color: #860808; /* dark red */
+  }
+  
+  .text-disabled {
+    color: #3f383b80; /* semi-transparent dark gray */
+  }
+}

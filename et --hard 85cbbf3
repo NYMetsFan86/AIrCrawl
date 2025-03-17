@@ -1,0 +1,46 @@
+[33m39eeb44[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: rebase (abort): returning to refs/heads/main
+[33m85cbbf3[m HEAD@{1}: commit: code consolidation part 1 auth updates
+[33m9bc2b78[m HEAD@{2}: commit: removed access without auth and global redirect for unauthorized
+[33mb34f5b9[m HEAD@{3}: commit: auth and crawl job issues ongoing
+[33m8450033[m HEAD@{4}: commit: fixed user table UI and sync function with Prisma DB
+[33m953410a[m HEAD@{5}: commit (rebase): fixed team management UI and sync function with Prisma DB
+[33m9bef59e[m HEAD@{6}: pull --rebase origin main (start): checkout 9bef59ec1f81303939c766191d42aeaaba7f2dc8
+[33m39eeb44[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{7}: commit: Resolved dupe navbar
+[33m749c1f7[m HEAD@{8}: commit: settings page updates and nextauth user tabele sync completed
+[33ma20fad2[m HEAD@{9}: commit: updates to AI crawler code w/ persistent ts2353 error
+[33m24361fc[m HEAD@{10}: commit: fixed login credential issue and Prism studio login data
+[33m3dcd4ce[m HEAD@{11}: commit: temp save
+[33m6eaac28[m HEAD@{12}: commit: crawl details page updates / working on OpenAI API issues
+[33m029efd6[m HEAD@{13}: commit: no comment
+[33m7d9c7b6[m HEAD@{14}: commit: she made me stop to cook chicken
+[33ma3eca86[m HEAD@{15}: commit: continuation of route.ts troubleshooting
+[33mbbb35db[m HEAD@{16}: commit: Mid email setup - switch from SMTP to Brevo API
+[33m9f372a0[m HEAD@{17}: commit: in progress / time constraint
+[33mafdefd6[m HEAD@{18}: commit: password reset page and Brevo Auth setup
+[33md595956[m HEAD@{19}: commit: general save
+[33mfa26da4[m HEAD@{20}: commit: OpenAI integration troubleshooting (errors)
+[33m7b3e673[m HEAD@{21}: commit: crawl rerun option added to Crawl Jobs
+[33m7586a1d[m HEAD@{22}: commit: testing crawl function and branding (unfinished)
+[33m6d19fb5[m HEAD@{23}: commit: copilot bug fixes and updated crawl
+[33m63efda9[m HEAD@{24}: commit: fixed basic login auth function
+[33m452dc7d[m HEAD@{25}: commit: authorized user testing / registration ui
+[33m074fcf1[m HEAD@{26}: commit: login page buildout and route.ts issues
+[33m04fecf3[m HEAD@{27}: checkout: moving from codespace-psychic-journey-jj4qwg7r79j9f9gp to main
+[33md8c1005[m[33m ([m[1;31morigin/codespace-psychic-journey-jj4qwg7r79j9f9gp[m[33m)[m HEAD@{28}: commit: Pending changes exported from your codespace
+[33m04fecf3[m HEAD@{29}: checkout: moving from main to codespace-psychic-journey-jj4qwg7r79j9f9gp
+[33m04fecf3[m HEAD@{30}: reset: moving to HEAD
+[33m04fecf3[m HEAD@{31}: commit: Crawler API testing
+[33m0755066[m HEAD@{32}: commit: mock ai crawler added
+[33m648d93a[m HEAD@{33}: commit: back for refresh
+[33m4aec326[m HEAD@{34}: commit: Settings UI and Media Asset Library page
+[33m9d301a1[m HEAD@{35}: commit: Fixed crawl type toggle option (one-time vs recurring)
+[33ma45c15f[m HEAD@{36}: commit: Added One-Time Crawl to UI
+[33mc5a7285[m HEAD@{37}: commit: Additional settings and Alerts page updates
+[33m34af02e[m HEAD@{38}: commit: Initial Dashboard UI functional & Branded
+[33m5832843[m HEAD@{39}: commit: Update
+[33mbeec246[m HEAD@{40}: commit: Update
+[33mebc4b0a[m HEAD@{41}: pull origin main: Fast-forward
+[33m4b63cad[m HEAD@{42}: reset: moving to HEAD
+[33m4b63cad[m HEAD@{43}: commit: Fixed Dashboard Mounting & Tailwind Config
+[33mfb8f3b5[m HEAD@{44}: commit: Your descriptive commit message
+[33m07ed284[m HEAD@{45}: clone: from https://github.com/NYMetsFan86/ai_crawler_lite
