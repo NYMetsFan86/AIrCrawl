@@ -1,22 +1,28 @@
-// src/components/auth/withAuth.tsx
 "use client";
+
 import { useAuth } from "@/components/providers/SupabaseProvider";
 import { useRouter } from "next/navigation";
-import { ReactNode } from "react";
+import { ComponentType, useEffect } from "react";
 
-interface WithAuthProps {
-  children: ReactNode;
-}
+export default function withAuth<P extends object>(Component: ComponentType<P>) {
+  return function WithAuthComponent(props: P) {
+    const { user, loading } = useAuth();
+    const router = useRouter();
 
-export function WithAuth({ children }: WithAuthProps) {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+    useEffect(() => {
+      if (!loading && !user) {
+        router.push('/auth');
+      }
+    }, [user, loading, router]);
 
-  if (loading) return <div>Loading...</div>;
-  if (!user) {
-    router.push("/auth");
-    return null;
-  }
+    if (loading) {
+      return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    }
 
-  return <>{children}</>;
+    if (!user) {
+      return null;
+    }
+
+    return <Component {...props} />;
+  };
 }

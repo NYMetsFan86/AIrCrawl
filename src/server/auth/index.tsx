@@ -3,8 +3,6 @@
 import * as React from "react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation"; // Fix: Correct import for App Router
-import { getSession } from "next-auth/react";
-import { authOptions } from "./config";
 
 export default function Home() {
   const router = useRouter();

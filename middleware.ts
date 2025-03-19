@@ -13,6 +13,7 @@ const publicPaths = [
   '/auth/callback',
   '/api/auth',
   '/not-found',
+  '/404.html',
 ];
 
 // Define auth paths (redirect authenticated users away from these)
@@ -39,7 +40,10 @@ export async function middleware(request: NextRequest) {
   );
   
   const isPublicPath = publicPaths.some(publicPath => 
-    path === publicPath || path.startsWith(`${publicPath}/`) || path.startsWith('/api/')
+    path === publicPath || path.startsWith(`${publicPath}/`) || 
+    path.startsWith('/api/') || 
+    path.includes('_next') ||
+    path.match(/\.(.*)$/) !== null // Files with extensions
   );
 
   // If user is authenticated and trying to access auth pages, redirect to dashboard
@@ -60,7 +64,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api/auth/callback).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
 
