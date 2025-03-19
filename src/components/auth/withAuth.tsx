@@ -1,6 +1,6 @@
 // src/components/auth/withAuth.tsx
 "use client";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/providers/SupabaseProvider";
 import { useRouter } from "next/navigation";
 import { ReactNode } from "react";
 
@@ -9,11 +9,11 @@ interface WithAuthProps {
 }
 
 export function WithAuth({ children }: WithAuthProps) {
-  const { data: session, status } = useSession();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
-  if (status === "loading") return <div>Loading...</div>;
-  if (!session) {
+  if (loading) return <div>Loading...</div>;
+  if (!user) {
     router.push("/auth");
     return null;
   }

@@ -6,39 +6,62 @@ import { useAuth } from "@/components/providers/SupabaseProvider";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Image from 'next/image';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export function AuthForm({ type = 'login' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
   const { signIn, signUp } = useAuth();
+  const supabase = createClientComponentClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setFormLoading(true);
     setError('');
 
     try {
       if (type === 'login') {
         const result = await signIn({ email, password });
-        if (!result.success) throw new Error(result.error?.message || 'Login failed');
+        if (!result.success) throw new Error('Login failed');
         router.push('/dashboard');
       } else {
-        const result = await signUp({ 
-          email, 
-          password, 
-          name: email.split('@')[0], 
-          metadata: { name: email.split('@')[0] } 
-        });
-        if (!result.success) throw new Error(result.error?.message || 'Signup failed');
+        // Fixed: Use correct Supabase user_metadata structure
+                const result = await signUp({ 
+                  email, 
+                  password,
+                  name: email, // Using email as the default name
+                  metadata: { name: email }
+                });
+        if (!result.success) throw new Error('Signup failed');
         router.push('/auth?message=Check your email to confirm your account');
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred');
     } finally {
-      setLoading(false);
+      setFormLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    setError('');
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback/google`
+        }
+      });
+      if (error) throw new Error(error.message);
+      // No finally block needed here as component will unmount on successful redirect
+    } catch (err: any) {
+      setError(err.message || 'Google sign-in failed');
+      setGoogleLoading(false);
     }
   };
 
@@ -67,10 +90,15 @@ export function AuthForm({ type = 'login' }) {
             required
           />
         </div>
-        <Button type="submit" disabled={loading} className="w-full">
-          {loading ? 'Processing...' : type === 'login' ? 'Sign In' : 'Sign Up'}
+        <Button type="submit" disabled={formLoading || googleLoading} className="w-full">
+          {formLoading ? 'Processing...' : type === 'login' ? 'Sign In' : 'Sign Up'}
         </Button>
       </form>
+      <div className="text-center">
+        <Button onClick={handleGoogleSignIn} disabled={formLoading || googleLoading} className="w-full">
+          {googleLoading ? 'Processing...' : 'Sign in with Google'}
+        </Button>
+      </div>
     </div>
   );
 }

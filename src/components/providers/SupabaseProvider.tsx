@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, ReactNode } from "react";
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
-import { AuthUser } from "@/hooks/useSupabaseAuth";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuthSimplified";
+import { AuthUser } from "@/hooks/useSupabaseAuthSimplified";
 import { Session } from "@supabase/supabase-js";
 
 export interface SignInCredentials {

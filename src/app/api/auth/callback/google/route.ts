@@ -1,27 +1,39 @@
 // src/app/api/auth/callback/google/route.ts
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "../../[...nextauth]/route";
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: Request) {
-  // Extract URL parameters
-  const url = new URL(request.url);
-  const error = url.searchParams.get('error');
-  const state = url.searchParams.get('state');
-  
-  // If there's an error or the user cancelled the flow
-  if (error || !url.searchParams.has('code')) {
-    console.log("Google auth error or cancellation:", error);
-    
-    // Construct the redirect URL - this should point to your registration page
-    // if that's where they started the flow
+export async function GET(request: NextRequest) {
+  const requestUrl = new URL(request.url);
+  const code = requestUrl.searchParams.get('code');
+  const error = requestUrl.searchParams.get('error');
+  const state = requestUrl.searchParams.get('state');
+
+  if (error || !code) {
+    console.error("Google auth error or cancellation:", error);
+
     const redirectUrl = state?.includes('from=register') 
       ? '/register?error=UserCanceled' 
       : '/auth?error=UserCanceled';
-      
-    return redirect(redirectUrl);
+
+    return NextResponse.redirect(new URL(redirectUrl, request.url));
   }
-  
-  // Otherwise, let NextAuth handle the successful flow
-  return redirect('/api/auth/callback/google');
+
+  try {
+    if (code) {
+      const cookieStore = cookies();
+      const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+
+      const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
+      if (sessionError) {
+        console.error("Error exchanging code for session:", sessionError);
+        return NextResponse.redirect(new URL('/auth?error=SessionExchangeFailed', request.url));
+      }
+    }
+
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  } catch (err) {
+    console.error("Unexpected error during authentication:", err);
+    return NextResponse.redirect(new URL('/auth?error=UnexpectedError', request.url));
+  }
 }

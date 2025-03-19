@@ -1,42 +1,39 @@
-'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/providers/SupabaseProvider';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function AuthCallback() {
   const router = useRouter();
-  const { session, loading, refreshSession } = useAuth();
+  const [message, setMessage] = useState('Authenticating...');
+  const supabase = createClientComponentClient();
 
   useEffect(() => {
-    const handleCallback = async () => {
-      try {
-        await refreshSession();
-        
-        // If we have a session after refresh, redirect to dashboard
-        if (session) {
-          router.push('/dashboard');
-        } else {
-          // If no session, something went wrong
-          router.push('/auth?error=SessionNotEstablished');
-        }
-      } catch (error) {
-        console.error('Error during auth callback:', error);
-        router.push('/auth?error=AuthCallbackError');
+    const handleHashFragment = async () => {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        router.push('/dashboard');
+      } else {
+        setMessage('Authentication failed');
+        setTimeout(() => router.push('/auth?error=unknown_error'), 2000);
       }
     };
 
-    if (!loading) {
-      handleCallback();
-    }
-  }, [loading, router, refreshSession, session]);
+    handleHashFragment();
+  }, [router, supabase.auth]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">Processing Authentication</h1>
-        <p className="mb-8">Please wait while we complete the authentication process...</p>
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+        <h1 className="text-2xl font-bold mb-4">Authentication</h1>
+        <p>{message}</p>
       </div>
     </div>
   );

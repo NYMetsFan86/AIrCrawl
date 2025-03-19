@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation';
 import { Session, User } from '@supabase/supabase-js';
+import { AuthChangeEvent } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('Missing Supabase environment variables. Check your .env file.');
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export type AuthUser = {
   id: string;
@@ -37,7 +47,7 @@ export function useSupabaseAuth() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
   const router = useRouter();
-  const supabase = createClient();
+  // using the imported supabase instance
 
   const refreshSession = useCallback(async () => {
     try {
@@ -54,7 +64,7 @@ export function useSupabaseAuth() {
         setSession(session);
         setUser({
           id: session.user.id,
-          email: session.user.email,
+          email: session.user.email || null,
           name: session.user.user_metadata?.name || null,
           role: session.user.user_metadata?.role || 'member',
           avatarUrl: session.user.user_metadata?.avatar_url || null,
@@ -74,10 +84,16 @@ export function useSupabaseAuth() {
   }, [supabase]);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      refreshSession();
-    });
+    interface AuthSubscription {
+      unsubscribe: () => void;
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null): void => {
+        setSession(session);
+        refreshSession();
+      }
+    ) as { data: { subscription: AuthSubscription } };
 
     refreshSession();
     return () => subscription.unsubscribe();
