@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 
 // Define public paths that don't require authentication
 const publicPaths = [
@@ -24,48 +25,26 @@ const authPaths = [
   '/auth/forgot-password',
 ];
 
-export async function middleware(request: NextRequest) {
-  const path = request.nextUrl.pathname;
-  
-  // Create Supabase client for authentication
-  const { supabase, response } = createClient(request);
-  
-  // Get the user session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  
-  const isAuthPath = authPaths.some(authPath => 
-    path === authPath || path.startsWith(`${authPath}/`)
-  );
-  
-  const isPublicPath = publicPaths.some(publicPath => 
-    path === publicPath || path.startsWith(`${publicPath}/`) || 
-    path.startsWith('/api/') || 
-    path.includes('_next') ||
-    path.match(/\.(.*)$/) !== null // Files with extensions
-  );
+export async function middleware(req: NextRequest) {
+  // Initialize response
+  const res = NextResponse.next();
 
-  // If user is authenticated and trying to access auth pages, redirect to dashboard
-  if (session && isAuthPath) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // Initialize supabase client with request/response
+  const supabase = createMiddlewareClient({ req, res });
+
+  // Automatically redirect authenticated users to dashboard
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session && authPaths.includes(req.nextUrl.pathname)) {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
   }
-  
-  // If user is not authenticated and trying to access protected routes, redirect to auth
-  if (!session && !isPublicPath) {
-    // Store the original URL to redirect back after login
-    const redirectUrl = new URL('/auth', request.url);
-    redirectUrl.searchParams.set('callbackUrl', request.url);
-    return NextResponse.redirect(redirectUrl);
-  }
-  
-  return response;
+
+  // Return the modified response
+  return res;
 }
 
+// Apply to all routes
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
 
 export function createClient(request: NextRequest) {
@@ -74,7 +53,7 @@ export function createClient(request: NextRequest) {
     request: {
       headers: request.headers,
     },
-  })
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -100,7 +79,7 @@ export function createClient(request: NextRequest) {
         },
       },
     }
-  )
+  );
 
-  return { supabase, response }
+  return { supabase, response };
 }
