@@ -37,11 +37,7 @@ export default function AuthPage() {
       if (!searchParams) return;
       
       const code = searchParams.get('code');
-      if (!code) {
-        console.error('No code found in URL');
-        router.replace('/auth?error=NoCode');
-        return;
-      }
+      if (!code) return; // Early return if no code, avoiding the console error
 
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) {
@@ -52,7 +48,10 @@ export default function AuthPage() {
       }
     };
 
-    exchangeCodeForSession();
+    // Only execute if there's a code parameter
+    if (searchParams?.get('code')) {
+      exchangeCodeForSession();
+    }
   }, [router, searchParams, supabase, callbackUrl]);
 
   interface ResetPasswordFormEvent extends React.FormEvent<HTMLFormElement> {

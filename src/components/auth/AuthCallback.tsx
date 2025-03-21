@@ -11,7 +11,7 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const exchangeCodeForSession = async () => {
-      const code = searchParams.get('code');
+      const code = searchParams?.get('code');
       if (!code) {
         console.error('No code found in URL');
         router.replace('/auth?error=NoCode'); // Show an error page

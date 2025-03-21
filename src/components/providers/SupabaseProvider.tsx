@@ -4,6 +4,7 @@ import { createContext, useContext, ReactNode, useEffect, useState } from "react
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuthSimplified";
 import { AuthUser } from "@/hooks/useSupabaseAuthSimplified";
 import { Session } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase/client";
 
 export interface SignInCredentials {
   email: string;
@@ -36,6 +37,7 @@ export interface AuthContextType {
   refreshSession: () => Promise<void>;
   isAuthenticated: boolean;
   onAuthStateChange?: (callback: () => void) => (() => void) | undefined;
+  supabase: typeof supabase;  // Adding direct access to supabase client
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,29 +45,36 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function SupabaseProvider({ children }: { children: ReactNode }) {
   const auth = useSupabaseAuth();
   const [initialized, setInitialized] = useState(false);
+  // This variable will hold the unsubscribe function returned by onAuthStateChange if available
+  let unsubscribe: (() => void) | undefined;
   
   useEffect(() => {
     // Initialize auth state on load
     auth.refreshSession().then(() => setInitialized(true));
     
-    // Setup auth state change listener
-    const unsubscribe = auth.onAuthStateChange && auth.onAuthStateChange(() => {
+    // Setup auth state change listener using only supabase client
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       auth.refreshSession();
     });
     
+    // Set up additional listener if onAuthStateChange is available in auth object
+    if (auth.onAuthStateChange) {
+      unsubscribe = auth.onAuthStateChange(() => {
+        auth.refreshSession();
+      });
+    }
+    
     return () => {
-      unsubscribe && unsubscribe();
+      if (unsubscribe) unsubscribe();
+      authListener.subscription.unsubscribe();
     };
   }, []);
   
-  if (!initialized && auth.loading) {
-    // Don't render children until we've initialized auth
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
-  }
-  
-  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
-}
-
+  // Include supabase client in the context value
+  const contextValue = {
+    ...auth,
+    supabase
+  };
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -73,3 +82,8 @@ export function useAuth() {
   }
   return context;
 }
+// No need to define setInitialized here as it's already defined in the useState hook above:
+// const [initialized, setInitialized] = useState(false);
+
+// There's also a duplicated useEffect hook outside the component which should be removed
+

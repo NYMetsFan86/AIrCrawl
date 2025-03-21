@@ -49,18 +49,27 @@ export function AuthForm({ type = 'login' }: AuthFormProps) {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const signInWithGoogle = async () => {
     setGoogleLoading(true);
     setError('');
-
+    
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`, // ✅ Always use window.location.origin
-        },
+      const redirectUri = `${window.location.origin}/auth/callback`;
+      
+      console.log("Using redirect URI:", redirectUri);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: redirectUri },
       });
-      if (error) throw error;
+
+      if (error) {
+        console.error("Google Sign-in error:", error);
+        throw error;
+      } else {
+        console.log("Redirecting to:", data?.url);
+        window.location.href = data.url;
+      }
     } catch (err: any) {
       setError(err.message || 'Google sign-in failed');
       setGoogleLoading(false);
@@ -72,13 +81,22 @@ export function AuthForm({ type = 'login' }: AuthFormProps) {
     setError('');
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: 'http://localhost:3000/auth/callback', 
+          redirectTo: 'http://localhost:3000/auth/callback',
         }
       });
-      if (error) throw error;
+      
+      console.log('Redirecting to GitHub OAuth...');
+      console.log('Redirect URL:', data?.url || 'No URL received');
+      
+      if (error) {
+        console.error('GitHub Sign-in error:', error);
+        throw error;
+      } else {
+        window.location.href = data.url;  // Force redirect to GitHub's login
+      }
     } catch (err: any) {
       setError(err.message || 'GitHub sign-in failed');
       setGithubLoading(false);
@@ -155,7 +173,7 @@ export function AuthForm({ type = 'login' }: AuthFormProps) {
 
       <div className="grid grid-cols-2 gap-3">
         <button
-          onClick={handleGoogleSignIn}
+          onClick={signInWithGoogle}
           disabled={googleLoading || formLoading}
           className="flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#860808] disabled:opacity-50 disabled:cursor-not-allowed"
         >
