@@ -1,12 +1,12 @@
 "use client";
 
+import { useEffect } from 'react';
 import { Inter } from 'next/font/google';
 import '@/styles/globals.css'; 
 import { Toaster } from '@/components/ui/toaster';
 import { useAuth } from '@/components/providers/SupabaseProvider';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import SideNav from '@/components/nav/SideNav';
-import { useEffect } from 'react';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -18,31 +18,43 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
   
-  // Add debug logging
+  // We don't need to immediately redirect here because 
+  // the middleware should handle most redirects
+  // This is just a fallback safety measure
   useEffect(() => {
-    console.log('Protected layout auth status:', { user, loading });
-  }, [user, loading]);
+    if (!isLoading && !user) {
+      router.push('/auth');
+    }
+  }, [user, isLoading, router]);
   
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-transparent border-[#860808]"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
   
-  // If not authenticated, redirect to auth
+  // If not authenticated, render nothing (redirect will happen via useEffect)
   if (!user) {
-    redirect('/auth');
     return null;
   }
 
   // Show layout with sidebar for authenticated users
   return (
-    <div className="flex h-screen">
+    <div className={`flex h-screen ${inter.variable} font-sans`}>
       <aside className="w-64 bg-gray-100 border-r">
         <SideNav />
       </aside>
       <main className="flex-1 overflow-auto">
         {children}
+        <Toaster />
       </main>
     </div>
   );

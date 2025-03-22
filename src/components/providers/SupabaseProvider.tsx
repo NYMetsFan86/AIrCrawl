@@ -1,76 +1,88 @@
 "use client";
 
 import { createContext, useContext, ReactNode, useEffect, useState } from "react";
-import { Session } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase/client";
+import { Session, User } from "@supabase/supabase-js";
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-// Create a context that provides the shared supabase instance and current session
-export const SupabaseContext = createContext({
-  supabase,
-  session: null as Session | null,
-  isLoading: true
+// Define proper types for the context
+type SupabaseContextType = {
+  user: User | null;
+  session: Session | null;
+  isLoading: boolean;
+  signIn: (credentials: { email: string; password: string }) => Promise<{
+    success: boolean;
+    error?: Error;
+  }>;
+  signUp: (data: { email: string; password: string; [key: string]: any }) => Promise<{
+    success: boolean;
+    error?: Error;
+  }>;
+  signOut: () => Promise<void>;
+  setServerSession: (session: Session | null) => void;
+};
+
+// Create the context with proper typing
+export const SupabaseContext = createContext<SupabaseContextType>({
+  user: null,
+  session: null,
+  isLoading: true,
+  signIn: async () => ({ success: false, error: new Error("Not implemented") }),
+  signUp: async () => ({ success: false, error: new Error("Not implemented") }),
+  signOut: async () => {},
+  setServerSession: () => {}
 });
 
-export function SupabaseProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+export function SupabaseProvider({ 
+  children,
+  serverSession
+}: { 
+  children: ReactNode;
+  serverSession?: Session | null;
+}) {
+  const [session, setSession] = useState<Session | null>(serverSession || null);
+  const [user, setUser] = useState<User | null>(serverSession?.user || null);
+  const [loading, setLoading] = useState(serverSession ? false : true);
+  const [supabase] = useState(() => createClientComponentClient());
 
   useEffect(() => {
-    const fetchSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setLoading(false);
-    };
-
-    fetchSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    // Use a general error handler instead of checking for a non-existent event type
-    const { data: errorListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' && session === null) {
-        console.log("User signed out");
+    const getInitialSession = async () => {
+      if (serverSession) {
+        // Already have server session, no need to fetch again
+        return;
       }
       
-      // Log any errors from session state
-      if (session?.user?.app_metadata?.provider === 'email' && !session?.user?.email_confirmed_at) {
-        console.warn("User email not confirmed");
+      setLoading(true);
+      try {
+        const { data: { session: clientSession } } = await supabase.auth.getSession();
+        setSession(clientSession);
+        setUser(clientSession?.user || null);
+      } catch (error) {
+        console.error("Error getting initial session:", error);
+      } finally {
+        setLoading(false);
       }
-    });
+    };
+
+    getInitialSession();
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, newSession) => {
+        setSession(newSession);
+        setUser(newSession?.user || null);
+        setLoading(false);
+      }
+    );
 
     return () => {
-      errorListener?.subscription?.unsubscribe?.();
+      subscription.unsubscribe();
     };
-  }, []);
+  }, [serverSession, supabase.auth]);
 
-  return (
-    <SupabaseContext.Provider value={{ supabase, session, isLoading: loading }}>
-      {!loading ? children : <div>Loading authentication...</div>}
-    </SupabaseContext.Provider>
-  );
-}
-
-// Backward compatibility hook
-export function useAuth() {
-  const context = useContext(SupabaseContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within a SupabaseProvider");
-  }
-  
-  const { supabase, session } = context;
-  
   const signIn = async ({ email, password }: { email: string; password: string }) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      return { success: !error, data, error };
+      return { success: !error, data, error: error || undefined };
     } catch (err) {
       console.error("Sign in error:", err);
       return { success: false, error: err as Error };
@@ -82,9 +94,12 @@ export function useAuth() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: metadata }
+        options: { 
+          data: metadata,
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
       });
-      return { success: !error, data, error };
+      return { success: !error, data, error: error || undefined };
     } catch (err) {
       console.error("Sign up error:", err);
       return { success: false, error: err as Error };
@@ -92,83 +107,45 @@ export function useAuth() {
   };
   
   const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      return { success: !error, error };
-    } catch (err) {
-      console.error("Sign out error:", err);
-      return { success: false, error: err as Error };
-    }
+    await supabase.auth.signOut();
+    // No need to set user/session to null here because the auth listener will handle it
   };
   
-  const signInWithOAuth = async ({ provider, redirectTo }: { provider: string; redirectTo?: string }) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: provider as any,
-        options: redirectTo ? { redirectTo } : undefined
-      });
-      return { success: !error, data, error };
-    } catch (err) {
-      console.error("OAuth sign in error:", err);
-      return { success: false, error: err as Error };
-    }
+  // Function to set server session (useful for server components)
+  const setServerSession = (newSession: Session | null) => {
+    setSession(newSession);
+    setUser(newSession?.user || null);
+    setLoading(false);
   };
-  
-  const sendPasswordResetEmail = async (email: string) => {
-    try {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      });
-      return { success: !error, data, error };
-    } catch (err) {
-      console.error("Password reset email error:", err);
-      return { success: false, error: err as Error };
-    }
-  };
-  
-  const resetPassword = async (newPassword: string) => {
-    try {
-      const { data, error } = await supabase.auth.updateUser({ password: newPassword });
-      return { success: !error, data, error };
-    } catch (err) {
-      console.error("Password reset error:", err);
-      return { success: false, error: err as Error };
-    }
-  };
-  
-  const refreshSession = async () => {
-    try {
-      const { data, error } = await supabase.auth.refreshSession();
-      return { success: !error, data, error };
-    } catch (err) {
-      console.error("Session refresh error:", err);
-      return { success: false, error: err as Error };
-    }
-  };
-  
-  return {
-    supabase,
+
+  const value = {
+    user,
     session,
-    user: session?.user || null,
-    isAuthenticated: !!session?.user,
-    loading: false,
-    error: null,
-    refreshSession,
+    isLoading: loading,
     signIn,
     signUp,
     signOut,
-    signInWithOAuth,
-    sendPasswordResetEmail,
-    resetPassword,
+    setServerSession
   };
+
+  return (
+    <SupabaseContext.Provider value={value}>
+      {loading ? (
+        <div className="flex justify-center items-center h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-transparent border-[#860808]"></div>
+        </div>
+      ) : (
+        children
+      )}
+    </SupabaseContext.Provider>
+  );
 }
 
-// New hook that returns just the context
-export function useSupabase() {
+// Simplified hook for accessing auth context
+export function useAuth() {
   const context = useContext(SupabaseContext);
   if (context === undefined) {
-    throw new Error("useSupabase must be used within a SupabaseProvider");
+    throw new Error("useAuth must be used within a SupabaseProvider");
   }
   return context;
 }
-

@@ -54,22 +54,20 @@ export function AuthForm({ type = 'login' }: AuthFormProps) {
     setError('');
     
     try {
-      const redirectUri = `${window.location.origin}/auth/callback`;
+      // Use relative path instead of window.location.origin
+      const redirectUri = `/auth/callback`;
       
-      console.log("Using redirect URI:", redirectUri);
-
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: redirectUri },
+        options: { 
+          redirectTo: redirectUri,
+          scopes: 'email profile' // Add proper scopes
+        },
       });
 
-      if (error) {
-        console.error("Google Sign-in error:", error);
-        throw error;
-      } else {
-        console.log("Redirecting to:", data?.url);
-        window.location.href = data.url;
-      }
+      if (error) throw error;
+      
+      if (data?.url) window.location.href = data.url;
     } catch (err: any) {
       setError(err.message || 'Google sign-in failed');
       setGoogleLoading(false);

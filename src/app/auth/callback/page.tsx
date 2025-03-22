@@ -1,38 +1,48 @@
 "use client";
 
 import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function AuthCallback() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const supabase = createClientComponentClient();
 
   useEffect(() => {
-    const exchangeCodeForSession = async () => {
-      const code = searchParams.get('code');
-      if (!code) {
-        console.error('No code found in URL');
-        router.replace('/auth?error=NoCode');
-        return;
-      }
-
+    const handleSession = async () => {
       try {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        // The code exchange happens automatically in the background
+        // We just need to handle the session status
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
         if (error) {
-          console.error('Failed to exchange code for session:', error);
-          router.replace(`/auth?error=${encodeURIComponent(error.message)}`);
-        } else {
-          router.replace('/dashboard');
+          console.error('Session error:', error);
+          router.replace('/auth?error=' + encodeURIComponent(error.message));
+          return;
         }
-      } catch (err: any) {
-        console.error('Unexpected error during session exchange:', err);
-        router.replace('/auth?error=UnexpectedError');
+        
+        if (session) {
+          // Redirect to dashboard on successful login
+          router.replace('/dashboard');
+        } else {
+          // No session found, redirect to login
+          router.replace('/auth?error=No_session_found');
+        }
+      } catch (err) {
+        console.error('Auth callback error:', err);
+        router.replace('/auth?error=Unknown_error');
       }
     };
 
-    exchangeCodeForSession();
-  }, [router, searchParams]);
+    handleSession();
+  }, [router, supabase.auth]);
 
-  return <p>Processing authentication...</p>;
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#860808] mx-auto"></div>
+        <p className="mt-4 text-gray-600">Completing authentication...</p>
+      </div>
+    </div>
+  );
 }
