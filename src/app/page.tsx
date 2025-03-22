@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, Search, Shield, Globe, Brain, AlertCircle } from 'lucide-react';
@@ -10,7 +10,6 @@ import { ArrowRight, Search, Shield, Globe, Brain, AlertCircle } from 'lucide-re
 export default function Home() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -43,6 +42,8 @@ export default function Home() {
           } catch (err) {
             console.error('Error handling auth code:', err);
             router.push('/auth?error=Authentication_failed');
+          } finally {
+            setIsAuthenticating(false); // Ensure this is reset
           }
         }
         
@@ -52,14 +53,15 @@ export default function Home() {
           router.push('/dashboard');
           return;
         }
+      } catch (err) {
+        console.error('Error during initialization:', err);
       } finally {
-        // Always set loading to false when done
-        setIsLoading(false);
+        setIsLoading(false); // Ensure loading state is reset
       }
     };
     
     initializePage();
-  }, [router, searchParams, supabase.auth]);
+  }, [router, searchParams]);
 
   // If we're loading or handling authentication, don't render the full page yet
   if (isLoading || isAuthenticating) {

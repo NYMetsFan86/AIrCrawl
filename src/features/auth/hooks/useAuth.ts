@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { supabase } from "@/hooks/useSupabaseAuthSimplified";
+import { supabase } from "@/lib/supabase/client";
 import { AuthUser, LoginCredentials } from '@/types';
 
 export function useAuth() {
